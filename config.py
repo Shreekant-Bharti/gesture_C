@@ -116,6 +116,11 @@ class UIConfig:
     window_name: str = "ISL Gesture Recognition"
     font_scale: float = 0.7
     thickness: int = 2
+    
+    # Simple Mode Settings (User-friendly, accessible)
+    simple_mode_default: bool = True  # Start in Simple Mode by default
+    simple_mode_font_scale: float = 1.2  # Larger text for accessibility
+    simple_mode_title_scale: float = 1.8  # Extra large title
 
     # UI colors (BGR)
     bg_panel: Tuple[int, int, int] = (25, 25, 25)
@@ -124,6 +129,53 @@ class UIConfig:
     red: Tuple[int, int, int] = (0, 0, 220)
     blue: Tuple[int, int, int] = (220, 120, 0)
     yellow: Tuple[int, int, int] = (0, 220, 220)
+    light_gray: Tuple[int, int, int] = (200, 200, 200)
+
+
+@dataclass
+class GeminiConfig:
+    api_key: str = "AIzaSyAjqCO0x7dLFjrZtLc6rLvgFwkKj2SdpWA"
+    model_name: str = "gemini-2.5-flash"  # Latest fast model, free tier
+    enabled_by_default: bool = False  # Optional feature, toggle with 'g' key
+    auto_enhance_in_simple_mode: bool = True  # Auto-enhance in Simple Mode
+    timeout_seconds: int = 5
+    max_retries: int = 2
+    
+    # Tone options: "natural", "polite", "formal", "casual"
+    default_tone: str = "polite"
+    
+    # Temperature for response generation (0.0 - 1.0)
+    # Lower = more deterministic, Higher = more creative
+    temperature: float = 0.3
+    
+    # System prompt for Gemini
+    system_prompt: str = """You are a language assistant for an Indian Sign Language (ISL) gesture recognition system.
+Your task is to convert sequences of recognized gesture words into natural, grammatically correct English sentences.
+
+Rules:
+1. Expand short gesture sequences into complete, fluent sentences
+2. Add appropriate articles (a, an, the), pronouns, and connecting words
+3. Maintain the original intent and meaning
+4. Use proper grammar, punctuation, and capitalization
+5. Keep responses concise but natural
+6. If the input is already a complete sentence, lightly polish it
+7. DO NOT add information that wasn't implied by the gestures
+8. DO NOT explain what you're doing, just return the enhanced sentence
+
+Examples:
+Input: "hello water please"
+Output: "Hello, could I please have some water?"
+
+Input: "thanks help"
+Output: "Thank you for your help."
+
+Input: "I love food"
+Output: "I love food."
+
+Input: "stop no bad"
+Output: "Stop, that's not good."
+
+Now enhance the following gesture sequence:"""
 
 
 CAMERA = CameraConfig()
@@ -132,3 +184,4 @@ DATA = DataCollectionConfig()
 MODEL = ModelConfig()
 RUNTIME = RuntimeConfig()
 UI = UIConfig()
+GEMINI = GeminiConfig()

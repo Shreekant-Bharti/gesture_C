@@ -1,14 +1,67 @@
-# ISL Real-time Gesture Recognition (MediaPipe + Scikit-learn)
+# ISL Real-time Gesture Recognition (MediaPipe + Scikit-learn + Gemini AI)
 
-This project does:
+## 🎯 Two Modes for Everyone
+
+### 👋 **SIMPLE MODE** (Default) - For Everyone
+
+**Perfect for non-technical users, elderly, deaf, and public demos**
+
+- ✅ Clean, large text interface
+- ✅ Auto-enhancement with AI
+- ✅ Zero technical knowledge needed
+- ✅ Just show your hand and sign!
+
+**Controls:** `s` to speak, `c` to clear, `a` for Advanced Mode
+
+📖 **[Simple Mode User Guide →](SIMPLE_MODE_GUIDE.md)** _(Start here!)_
+
+---
+
+### 🔧 **ADVANCED MODE** - For Developers
+
+Full-featured mode with:
+
+- Real-time stats (FPS, confidence, etc.)
+- Tutorial overlay
+- Manual controls
+- Debug information
+
+**Press `a` to toggle between modes**
+
+---
+
+## 🌟 Features
 
 - Real-time hand landmark detection (MediaPipe)
 - Gesture recognition using ML (RandomForest)
 - Sentence building with smoothing
+- **🤖 AI-powered natural language enhancement (Google Gemini)** ✨
 - Text-to-speech output (pyttsx3)
 - Tutorial mode + stats + save sentence to file
+- **👵 Accessibility-focused Simple Mode** ✨ NEW!
 
 Works on Windows 10/11 with a normal laptop webcam.
+
+---
+
+## 🤖 Gemini AI Integration
+
+Transform raw gesture sequences into natural English!
+
+**Example:**
+
+- **Input:** `hello water please`
+- **Output:** `Hello, could I please have some water?`
+
+**Features:**
+
+- ✅ Natural language processing
+- ✅ Grammar correction
+- ✅ Multiple tones (polite, formal, casual)
+- ✅ Auto-enhancement in Simple Mode
+- ✅ Free tier (Google Gemini 2.5 Flash)
+
+📖 **[Full Gemini Integration Guide →](GEMINI_INTEGRATION.md)**
 
 ---
 
@@ -38,24 +91,81 @@ pip install -r requirements.txt
 
 ---
 
-## Folder structure
+## 📁 Project Structure (Cleaned & Optimized)
 
-Place these files in one folder:
+```
+gesture/
+├── main_app.py           # Main application (Simple + Advanced modes)
+├── config.py             # Centralized configuration
+├── gemini_ai.py          # AI enhancement module
+├── requirements.txt      # Dependencies
+├── gesture_model.pkl     # Trained ML model
+├── README.md             # This file
+├── tools/                # Development utilities
+│   ├── collect_data.py   # Gesture data collection
+│   └── train_model.py    # Model training
+├── gesture_data/         # Training data (CSV files)
+│   └── *.csv             # (42 gestures: A-Z, 0-9, words)
+└── sentences/            # Saved output sentences
+    └── *.txt
+```
 
-- `config.py`
-- `collect_data.py`
-- `train_model.py`
-- `test_model.py`
-- `main_app.py`
-- `requirements.txt`
+**Core Files (6):**
 
-Data will be stored in:
+- Production: `main_app.py`, `config.py`, `gemini_ai.py`, `requirements.txt`, `gesture_model.pkl`
+- Documentation: `README.md`
 
-- `gesture_data/` (CSV files)
+**Development Tools:**
 
-Sentences saved in:
+- `tools/collect_data.py` - Collect gesture training data
+- `tools/train_model.py` - Train RandomForest model
 
-- `sentences/` (txt files)
+---
+
+## 📦 Supported Gestures (42 Total)
+
+**Letters (15):** A, B, C, D, E, F, G, H, I, L, O, U, V, W, Y  
+**Numbers (10):** 0-9  
+**Words (17):** Hello, Help, Thanks, Please, Yes, No, Okay, Stop, ...
+
+_Configure in [config.py](config.py) → `GestureConfig.labels`_
+
+---
+
+## ⚙️ Configuration
+
+All settings in [config.py](config.py):
+
+**Gemini AI:**
+
+```python
+GEMINI = GeminiConfig(
+    api_key="AIzaSyA...",           # Your API key
+    model_name="gemini-2.5-flash",   # Model version
+    auto_enhance_in_simple_mode=True # Auto-enhance
+)
+```
+
+**Camera:**
+
+```python
+CAMERA = CameraConfig(
+    index=0,      # Camera index (try 1 if 0 fails)
+    width=1280,
+    height=720,
+    fps=30
+)
+```
+
+**UI Mode:**
+
+```python
+UI = UIConfig(
+    simple_mode_default=True  # Start in Simple Mode
+)
+```
+
+---
 
 ---
 
@@ -64,7 +174,7 @@ Sentences saved in:
 Run:
 
 ```powershell
-python collect_data.py
+python tools/collect_data.py
 ```
 
 You will see the webcam with landmarks.
@@ -97,7 +207,7 @@ gesture_data/Hello.csv
 Run:
 
 ```powershell
-python train_model.py
+python tools/train_model.py
 ```
 
 This will:
@@ -109,25 +219,7 @@ This will:
 
 ---
 
-## Step 3: Quick Live Testing
-
-Run:
-
-```powershell
-python test_model.py
-```
-
-Shows:
-
-- current predicted gesture
-- confidence
-- prediction history
-
-Press `q` to quit.
-
----
-
-## Step 4: Run the Full App
+## Step 3: Run the Application
 
 Run:
 
@@ -135,15 +227,23 @@ Run:
 python main_app.py
 ```
 
-**Controls:**
+### 🎮 Controls
+
+**Simple Mode (Default):**
+
+- `s` = speak sentence (TTS)
+- `c` = clear sentence
+- `a` = switch to Advanced Mode
+
+**Advanced Mode:**
 
 - `s` = speak sentence (TTS)
 - `c` = clear sentence
 - `w` = save sentence to txt file
-- `t` = tutorial mode overlay
+- `t` = toggle tutorial mode
+- `a` = switch to Simple Mode
+- `[` / `]` = tutorial pages (when tutorial active)
 - `q` = quit
-
-In tutorial mode: `[` and `]` change pages
 
 ---
 
@@ -182,41 +282,41 @@ You likely collected inconsistent samples.
 
 ---
 
-## Beginner usage summary
+## 🚀 Beginner Quick Start
 
 ```powershell
-python collect_data.py
-python train_model.py
-python test_model.py
+# 1. Setup
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+
+# 2. Collect gesture data
+python tools/collect_data.py
+
+# 3. Train model
+python tools/train_model.py
+
+# 4. Run app
 python main_app.py
 ```
 
 ---
 
-# Complete beginner guide (quick but crystal clear)
+## 📝 Usage Guide (Simple Mode)
 
-1. **Folder banayo** (like `isl_project/`) and sab files paste karo.
-2. PowerShell open karo inside that folder.
-3. Run:
-   - `python -m venv .venv`
-   - `.venv\Scripts\activate`
-   - `pip install -r requirements.txt`
-4. **Data collect**:
-   - `python collect_data.py`
-   - Gesture A select already hoga. **SPACE** dabao. 150 samples hone do.
-   - **n** dabao next gesture. Repeat.
-   - Tip: Har 4-5 samples me hand thoda tilt/rotate karo, distance change karo.
-5. **Train**:
-   - `python train_model.py`
-   - Output me accuracy, report, confusion matrix aayega. Model save hoga.
-6. **Test**:
-   - `python test_model.py` (quick validation)
-7. **Final app**:
-   - `python main_app.py`
-   - Stable gesture 80% buffer me hoga tab sentence me add hoga.
-   - **s** to speak, **w** to save, **t** tutorial.
+1. **Launch:** Run `python main_app.py`
+2. **Sign:** Show ISL gestures to camera
+3. **Build sentence:** Gestures auto-add after 1 second stability
+4. **Enhance (Auto):** AI improves sentence after 2+ words
+5. **Speak:** Press `s` to hear your sentence
+6. **Clear:** Press `c` to start over
 
-**Example (real use):**  
-You show "Hello" stable for ~1 sec → sentence becomes: `Hello` → then "Help" → `Hello Help` → press **s** and it बोल देगा.
+**Example Flow:**
 
-If you want, next message me main problems jo hackathon me aate hain (dataset bias, lighting, similar gestures confusion) ka analysis bhi de sakta hu!
+```
+Gesture: "Hello" → "Water" → "Please"
+Auto-enhanced: "Hello, could I please have some water?"
+Press 's' → Speaks aloud!
+```
+
+---

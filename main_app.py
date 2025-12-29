@@ -1,20 +1,30 @@
 """
 main_app.py
-Main production app:
-- Real-time hand tracking (MediaPipe)
-- Gesture prediction (trained model)
-- Prediction smoothing (rolling buffer)
-- Sentence building + TTS (pyttsx3)
-- Tutorial mode (text reference)
-- Stats (words, avg confidence, gestures/min)
-- Save sentence to file (timestamp)
+Main production app with SIMPLE MODE for non-technical users:
 
-Controls:
+SIMPLE MODE (Default):
+- Clean, accessible UI with large text
+- Auto-enhancement with Gemini AI
+- Minimal technical information
+- Perfect for elderly, deaf, and non-technical users
+
+ADVANCED MODE (Press 'a'):
+- Full developer/debug interface
+- Real-time stats (FPS, confidence, etc.)
+- Tutorial mode
+- Manual controls
+
+Controls (Simple Mode):
 - s: speak sentence (TTS)
 - c: clear sentence
+- a: toggle Advanced Mode
+
+Advanced Mode adds:
 - w: write sentence to txt
 - t: toggle tutorial overlay
-- q: quit
+- g: toggle Gemini AI
+- e: manual enhance
+- q: quit (works in both modes)
 """
 
 import os
@@ -29,9 +39,10 @@ import mediapipe as mp
 import pyttsx3
 
 from config import (
-    CAMERA, MP, MODEL, UI, RUNTIME,
+    CAMERA, MP, MODEL, UI, RUNTIME, GEMINI,
     GESTURES, TUTORIAL_TIPS
 )
+from gemini_ai import GeminiService
 
 
 def open_camera() -> cv2.VideoCapture:
@@ -182,6 +193,113 @@ def draw_tutorial_overlay(frame: np.ndarray, page: int, page_size: int = 10) -> 
         y += 34
 
 
+def draw_ui_simple(
+    frame: np.ndarray,
+    current_label: str,
+    stable_label: Optional[str],
+    sentence: str,
+    enhanced_sentence: str,
+    has_hand: bool,
+    is_listening: bool
+) -> None:
+    """
+    Simple, accessible UI for non-technical users.
+    Large text, minimal info, friendly messages.
+    """
+    h, w = frame.shape[:2]
+    
+    # Clean background
+    cv2.rectangle(frame, (0, 0), (w, h), (30, 30, 30), -1)
+    
+    # Title - Large and centered
+    title = "Sign Language Recognition"
+    title_scale = UI.simple_mode_title_scale
+    title_size = cv2.getTextSize(title, cv2.FONT_HERSHEY_SIMPLEX, title_scale, 3)[0]
+    title_x = (w - title_size[0]) // 2
+    cv2.putText(frame, title, (title_x, 80), cv2.FONT_HERSHEY_SIMPLEX, 
+                title_scale, UI.white, 3, cv2.LINE_AA)
+    
+    # Status message - Friendly and clear
+    if not has_hand:
+        status = "🖐 Show your hand to the camera"
+        status_color = UI.yellow
+    elif is_listening:
+        status = "👀 Watching... keep signing"
+        status_color = UI.green
+    else:
+        status = "✓ Ready"
+        status_color = UI.green
+    
+    status_scale = UI.simple_mode_font_scale
+    status_size = cv2.getTextSize(status, cv2.FONT_HERSHEY_SIMPLEX, status_scale, 2)[0]
+    status_x = (w - status_size[0]) // 2
+    cv2.putText(frame, status, (status_x, 150), cv2.FONT_HERSHEY_SIMPLEX,
+                status_scale, status_color, 2, cv2.LINE_AA)
+    
+    # Detected word - Current gesture (large and prominent)
+    y_pos = 240
+    detected_label = "Detected:"
+    cv2.putText(frame, detected_label, (80, y_pos), cv2.FONT_HERSHEY_SIMPLEX,
+                UI.simple_mode_font_scale, UI.light_gray, 2, cv2.LINE_AA)
+    
+    # Show stable label (what's being recognized)
+    word = stable_label if stable_label else "..."
+    word_scale = 2.0  # Extra large for visibility
+    word_size = cv2.getTextSize(word, cv2.FONT_HERSHEY_SIMPLEX, word_scale, 3)[0]
+    word_x = (w - word_size[0]) // 2
+    cv2.putText(frame, word, (word_x, y_pos + 80), cv2.FONT_HERSHEY_SIMPLEX,
+                word_scale, UI.green, 3, cv2.LINE_AA)
+    
+    # Sentence box - Clean and centered
+    y_pos += 180
+    sentence_label = "Sentence:"
+    cv2.putText(frame, sentence_label, (80, y_pos), cv2.FONT_HERSHEY_SIMPLEX,
+                UI.simple_mode_font_scale, UI.light_gray, 2, cv2.LINE_AA)
+    
+    # Draw sentence box
+    box_x1, box_y1 = 60, y_pos + 20
+    box_x2, box_y2 = w - 60, y_pos + 180
+    cv2.rectangle(frame, (box_x1, box_y1), (box_x2, box_y2), UI.white, 2)
+    cv2.rectangle(frame, (box_x1 + 2, box_y1 + 2), (box_x2 - 2, box_y2 - 2), (40, 40, 40), -1)
+    
+    # Display sentence (use enhanced if available, otherwise raw)
+    display_sentence = enhanced_sentence if enhanced_sentence.strip() else sentence
+    if not display_sentence.strip():
+        display_sentence = "(waiting for gestures...)"
+    
+    # Word wrap for long sentences
+    words = display_sentence.split()
+    lines: List[str] = []
+    line = ""
+    max_width = 35  # characters per line
+    
+    for word in words:
+        if len(line) + len(word) + 1 <= max_width:
+            line = (line + " " + word).strip()
+        else:
+            if line:
+                lines.append(line)
+            line = word
+    if line:
+        lines.append(line)
+    
+    # Display up to 5 lines
+    lines = lines[-5:]
+    text_y = box_y1 + 45
+    for line_text in lines:
+        cv2.putText(frame, line_text, (box_x1 + 20, text_y),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, UI.white, 2, cv2.LINE_AA)
+        text_y += 30
+    
+    # Simple instructions at bottom
+    instructions = "Press 's' to SPEAK  |  Press 'c' to CLEAR  |  Press 'a' for Advanced Mode"
+    inst_scale = 0.7
+    inst_size = cv2.getTextSize(instructions, cv2.FONT_HERSHEY_SIMPLEX, inst_scale, 2)[0]
+    inst_x = (w - inst_size[0]) // 2
+    cv2.putText(frame, instructions, (inst_x, h - 30),
+                cv2.FONT_HERSHEY_SIMPLEX, inst_scale, UI.light_gray, 2, cv2.LINE_AA)
+
+
 def draw_ui(
     frame: np.ndarray,
     current_label: str,
@@ -192,13 +310,18 @@ def draw_ui(
     fps: float,
     total_words: int,
     avg_conf: float,
-    gestures_per_min: float
+    gestures_per_min: float,
+    gemini_enabled: bool = False,
+    enhanced_sentence: str = ""
 ) -> None:
     h, w = frame.shape[:2]
 
     # Top banner
     cv2.rectangle(frame, (0, 0), (w, 70), UI.bg_panel, -1)
-    cv2.putText(frame, "ISL Real-time Gesture Recognition (Hackathon)", (20, 45),
+    title = "ISL Real-time Gesture Recognition"
+    if gemini_enabled:
+        title += " + Gemini AI"
+    cv2.putText(frame, title, (20, 45),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.95, UI.white, 2)
 
     # Left info panel
@@ -219,8 +342,10 @@ def draw_ui(
     draw_confidence_bar(frame, 20, 350, 360, 18, stable_conf)
 
     # Sentence panel
-    cv2.putText(frame, "Sentence", (20, 410), cv2.FONT_HERSHEY_SIMPLEX, 0.85, UI.white, 2)
-    cv2.rectangle(frame, (20, 430), (400, 560), (45, 45, 45), -1)
+    sentence_label = "Raw Gesture Sentence" if gemini_enabled else "Sentence"
+    cv2.putText(frame, sentence_label, (20, 410), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
+    box_height = 560 if not gemini_enabled else 490
+    cv2.rectangle(frame, (20, 430), (400, box_height), (45, 45, 45), -1)
 
     # wrap sentence
     words = sentence.strip().split()
@@ -234,24 +359,55 @@ def draw_ui(
             line = wd
     if line:
         lines.append(line)
-    lines = lines[-4:]
+    max_lines = 3 if gemini_enabled else 4
+    lines = lines[-max_lines:]
 
-    y = 470
+    y = 465
     for ln in lines:
-        cv2.putText(frame, ln, (30, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, UI.white, 2)
-        y += 28
+        cv2.putText(frame, ln, (30, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
+        y += 26
+    
+    # Enhanced sentence panel (if Gemini enabled)
+    if gemini_enabled:
+        cv2.putText(frame, "AI Enhanced Sentence", (20, 520), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.green, 2)
+        cv2.rectangle(frame, (20, 540), (400, 610), (35, 65, 35), -1)
+        
+        # Wrap enhanced sentence
+        enh_words = enhanced_sentence.strip().split()
+        enh_lines: List[str] = []
+        enh_line = ""
+        for wd in enh_words:
+            if len(enh_line) + len(wd) + 1 <= 28:
+                enh_line = (enh_line + " " + wd).strip()
+            else:
+                enh_lines.append(enh_line)
+                enh_line = wd
+        if enh_line:
+            enh_lines.append(enh_line)
+        enh_lines = enh_lines[-2:]
+        
+        y = 570
+        for ln in enh_lines:
+            cv2.putText(frame, ln, (30, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
+            y += 26
 
     # Stats
-    cv2.putText(frame, "Stats", (20, 610), cv2.FONT_HERSHEY_SIMPLEX, 0.85, UI.white, 2)
-    cv2.putText(frame, f"Words: {total_words}", (20, 645), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
-    cv2.putText(frame, f"AvgConf: {avg_conf:.2f}", (20, 675), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
-    cv2.putText(frame, f"Gest/min: {gestures_per_min:.1f}", (20, 705),
+    stats_y = 640 if gemini_enabled else 610
+    cv2.putText(frame, "Stats", (20, stats_y), cv2.FONT_HERSHEY_SIMPLEX, 0.85, UI.white, 2)
+    cv2.putText(frame, f"Words: {total_words}", (20, stats_y + 35), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
+    cv2.putText(frame, f"AvgConf: {avg_conf:.2f}", (20, stats_y + 65), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
+    cv2.putText(frame, f"Gest/min: {gestures_per_min:.1f}", (20, stats_y + 95),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
-    cv2.putText(frame, f"FPS: {fps:.1f}", (20, 735), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
+    cv2.putText(frame, f"FPS: {fps:.1f}", (20, stats_y + 125), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.white, 2)
+    
+    # Gemini status indicator
+    if gemini_enabled:
+        status_text = "Gemini: ON"
+        cv2.putText(frame, status_text, (250, stats_y + 35), cv2.FONT_HERSHEY_SIMPLEX, 0.75, UI.green, 2)
 
     # Controls footer
-    controls = "s speak | c clear | w save | t tutorial | q quit"
-    cv2.putText(frame, controls, (440, h - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.7, UI.white, 2)
+    controls = "s speak | c clear | e enhance | g gemini | w save | t tutorial | q quit"
+    cv2.putText(frame, controls, (440, h - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.65, UI.white, 2)
 
 
 def main() -> None:
@@ -278,6 +434,23 @@ def main() -> None:
     except Exception as e:
         print(f"[ERROR] pyttsx3 init failed: {e}")
         tts = None
+    
+    # Gemini AI service (optional)
+    gemini_service = GeminiService(tone=GEMINI.default_tone)
+    gemini_enabled = GEMINI.enabled_by_default and gemini_service.is_available()
+    if gemini_service.is_available():
+        print(f"[INFO] Gemini AI available. Press 'g' to toggle (currently: {'ON' if gemini_enabled else 'OFF'})")
+    else:
+        print(f"[WARN] Gemini AI unavailable: {gemini_service.last_error}")
+    
+    # UI Mode (Simple = user-friendly, Advanced = developer mode)
+    simple_mode = UI.simple_mode_default
+    print(f"[INFO] Starting in {'Simple' if simple_mode else 'Advanced'} Mode. Press 'a' to toggle.")
+    
+    # Auto-enable Gemini in Simple Mode for best UX
+    if simple_mode and gemini_service.is_available() and GEMINI.auto_enhance_in_simple_mode:
+        gemini_enabled = True
+        print("[INFO] Gemini AI auto-enabled for Simple Mode")
 
     mp_hands = mp.solutions.hands
     mp_draw = mp.solutions.drawing_utils
@@ -289,6 +462,10 @@ def main() -> None:
     sentence_words: List[str] = []
     last_added_label = ""
     last_add_time = 0.0
+    
+    # Gemini enhancement
+    enhanced_sentence = ""
+    last_enhancement_time = 0.0
 
     # Stats
     session_start = time.time()
@@ -374,6 +551,17 @@ def main() -> None:
                     total_words_added += 1
                     conf_sum += stable_conf
                     conf_count += 1
+                    
+                    # Auto-enhance in Simple Mode (after each word added)
+                    if simple_mode and gemini_enabled and gemini_service.is_available():
+                        # Auto-enhance with small delay to avoid rate limits
+                        if (now - last_enhancement_time) >= 2.0:  # 2 second cooldown
+                            sentence_temp = " ".join(sentence_words)
+                            if len(sentence_words) >= 2:  # Only enhance when 2+ words
+                                result = gemini_service.enhance_sentence(sentence_temp)
+                                if result.success:
+                                    enhanced_sentence = result.enhanced_text
+                                    last_enhancement_time = now
 
             # FPS
             now2 = time.time()
@@ -388,21 +576,41 @@ def main() -> None:
             avg_conf = (conf_sum / conf_count) if conf_count > 0 else 0.0
 
             sentence = " ".join(sentence_words)
+            
+            # Determine if hand is detected
+            has_hand = results.multi_hand_landmarks is not None
+            is_listening = stable_lbl is not None
 
-            draw_ui(
-                frame=frame,
-                current_label=current_label,
-                current_conf=current_conf,
-                stable_label=stable_lbl,
-                stable_conf=stable_conf,
-                sentence=sentence,
-                fps=fps,
-                total_words=total_words_added,
-                avg_conf=avg_conf,
-                gestures_per_min=gestures_per_min
-            )
+            # Choose UI mode
+            if simple_mode:
+                draw_ui_simple(
+                    frame=frame,
+                    current_label=current_label,
+                    stable_label=stable_lbl,
+                    sentence=sentence,
+                    enhanced_sentence=enhanced_sentence,
+                    has_hand=has_hand,
+                    is_listening=is_listening
+                )
+            else:
+                # Advanced Mode - full debug UI
+                draw_ui(
+                    frame=frame,
+                    current_label=current_label,
+                    current_conf=current_conf,
+                    stable_label=stable_lbl,
+                    stable_conf=stable_conf,
+                    sentence=sentence,
+                    fps=fps,
+                    total_words=total_words_added,
+                    avg_conf=avg_conf,
+                    gestures_per_min=gestures_per_min,
+                    gemini_enabled=gemini_enabled,
+                    enhanced_sentence=enhanced_sentence
+                )
 
-            if tutorial_mode:
+            # Tutorial mode only in Advanced Mode
+            if not simple_mode and tutorial_mode:
                 draw_tutorial_overlay(frame, tutorial_page, page_size=10)
 
             cv2.imshow(UI.window_name, frame)
@@ -410,9 +618,21 @@ def main() -> None:
 
             if key == ord("q"):
                 break
+            
+            if key == ord("a"):
+                # Toggle between Simple and Advanced modes
+                simple_mode = not simple_mode
+                mode_name = "Simple" if simple_mode else "Advanced"
+                print(f"[INFO] Switched to {mode_name} Mode")
+                
+                # Auto-enable Gemini when entering Simple Mode
+                if simple_mode and gemini_service.is_available() and GEMINI.auto_enhance_in_simple_mode:
+                    gemini_enabled = True
+                    print("[INFO] Gemini AI auto-enabled for Simple Mode")
 
             if key == ord("c"):
                 sentence_words.clear()
+                enhanced_sentence = ""
                 last_added_label = ""
                 last_add_time = time.time()
                 print("[INFO] Sentence cleared.")
@@ -421,22 +641,61 @@ def main() -> None:
                 if tts is None:
                     print("[WARN] TTS not available.")
                 else:
-                    print(f"[TTS] Speaking: {sentence}")
-                    speak_text(tts, sentence)
+                    # Speak enhanced sentence if available, otherwise raw sentence
+                    text_to_speak = enhanced_sentence if (gemini_enabled and enhanced_sentence) else sentence
+                    print(f"[TTS] Speaking: {text_to_speak}")
+                    speak_text(tts, text_to_speak)
+            
+            if key == ord("g"):
+                # Toggle Gemini
+                if gemini_service.is_available():
+                    gemini_enabled = not gemini_enabled
+                    status = "ON" if gemini_enabled else "OFF"
+                    print(f"[INFO] Gemini AI: {status}")
+                    if not gemini_enabled:
+                        enhanced_sentence = ""
+                else:
+                    print(f"[WARN] Gemini unavailable: {gemini_service.last_error}")
+            
+            if key == ord("e"):
+                # Manually trigger enhancement
+                if not gemini_service.is_available():
+                    print("[WARN] Gemini not available.")
+                elif not sentence.strip():
+                    print("[WARN] No sentence to enhance.")
+                else:
+                    print(f"[GEMINI] Enhancing: '{sentence}'")
+                    result = gemini_service.enhance_sentence(sentence)
+                    if result.success:
+                        enhanced_sentence = result.enhanced_text
+                        print(f"[GEMINI] Result: '{enhanced_sentence}' ({result.processing_time:.2f}s)")
+                        last_enhancement_time = time.time()
+                    else:
+                        print(f"[GEMINI] Failed: {result.error_message}")
 
             if key == ord("w"):
-                path = save_sentence_to_file(sentence)
-                if path:
-                    print(f"[SAVED] Sentence written to: {path}")
+                # Save enhanced sentence if available, otherwise raw sentence
+                text_to_save = enhanced_sentence if (gemini_enabled and enhanced_sentence) else sentence
+                if text_to_save.strip():
+                    path = save_sentence_to_file(text_to_save)
+                    if path:
+                        sentence_type = "Enhanced" if (gemini_enabled and enhanced_sentence) else "Raw"
+                        print(f"[SAVED] {sentence_type} sentence written to: {path}")
+                    else:
+                        print("[WARN] Save failed.")
                 else:
                     print("[WARN] Nothing to save.")
 
             if key == ord("t"):
-                tutorial_mode = not tutorial_mode
-                print(f"[INFO] Tutorial mode: {'ON' if tutorial_mode else 'OFF'}")
+                # Tutorial mode only available in Advanced Mode
+                if not simple_mode:
+                    tutorial_mode = not tutorial_mode
+                    print(f"[INFO] Tutorial mode: {'ON' if tutorial_mode else 'OFF'}")
+                else:
+                    print("[INFO] Tutorial is only available in Advanced Mode. Press 'a' to switch.")
 
-            # Tutorial page controls
-            if tutorial_mode:
+            # Tutorial page controls (only in Advanced Mode)
+            if not simple_mode and tutorial_mode:
                 if key == ord("["):
                     tutorial_page = max(0, tutorial_page - 1)
                 if key == ord("]"):
