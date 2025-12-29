@@ -141,6 +141,43 @@ def speak_text(engine: pyttsx3.Engine, text: str) -> None:
         print(f"[ERROR] TTS failed: {e}")
 
 
+def test_system_response() -> None:
+    """
+    🧪 FAIL-SAFE TEST MODE
+    Test if the system can respond without camera/gestures.
+    If this doesn't work, the system is fundamentally broken.
+    """
+    print("\n" + "="*60)
+    print("🧪 TESTING SYSTEM RESPONSE (No camera required)")
+    print("="*60)
+    
+    # Test TTS
+    try:
+        tts = pyttsx3.init()
+        test_text = "System test successful"
+        print(f"[TEST] Speaking: {test_text}")
+        speak_text(tts, test_text)
+        print("[✓ TEST PASSED] TTS working")
+    except Exception as e:
+        print(f"[✗ TEST FAILED] TTS error: {e}")
+    
+    # Test Gemini (if available)
+    try:
+        gemini = GeminiService()
+        if gemini.is_available():
+            result = gemini.enhance_sentence("hello water please")
+            if result.success:
+                print(f"[✓ TEST PASSED] Gemini AI working: {result.enhanced_text}")
+            else:
+                print(f"[⚠ TEST PARTIAL] Gemini available but enhancement failed: {result.error_message}")
+        else:
+            print(f"[INFO] Gemini not available (optional): {gemini.last_error}")
+    except Exception as e:
+        print(f"[ERROR] Gemini test crashed: {e}")
+    
+    print("="*60 + "\n")
+
+
 def save_sentence_to_file(sentence: str) -> Optional[str]:
     if not sentence.strip():
         return None
@@ -439,18 +476,26 @@ def main() -> None:
     gemini_service = GeminiService(tone=GEMINI.default_tone)
     gemini_enabled = GEMINI.enabled_by_default and gemini_service.is_available()
     if gemini_service.is_available():
-        print(f"[INFO] Gemini AI available. Press 'g' to toggle (currently: {'ON' if gemini_enabled else 'OFF'})")
+        print(f"[✓ GEMINI] AI available. Press 'g' to toggle (currently: {'ON' if gemini_enabled else 'OFF'})")
     else:
-        print(f"[WARN] Gemini AI unavailable: {gemini_service.last_error}")
+        print(f"[⚠ GEMINI] AI unavailable: {gemini_service.last_error}")
+        print("[INFO] System will work without AI enhancement")
     
     # UI Mode (Simple = user-friendly, Advanced = developer mode)
     simple_mode = UI.simple_mode_default
-    print(f"[INFO] Starting in {'Simple' if simple_mode else 'Advanced'} Mode. Press 'a' to toggle.")
+    print(f"[✓ MODE] Starting in {'Simple' if simple_mode else 'Advanced'} Mode. Press 'a' to toggle.")
     
     # Auto-enable Gemini in Simple Mode for best UX
     if simple_mode and gemini_service.is_available() and GEMINI.auto_enhance_in_simple_mode:
         gemini_enabled = True
-        print("[INFO] Gemini AI auto-enabled for Simple Mode")
+        print("[✓ AUTO-ENHANCE] Gemini AI enabled for Simple Mode")
+    
+    # Critical startup message
+    print("\n" + "="*60)
+    print("🚀 SYSTEM READY - Show hand gestures to camera")
+    print("   Gestures will be detected and added to sentence")
+    print("   Press 's' to SPEAK, 'c' to CLEAR, 'q' to QUIT")
+    print("="*60 + "\n")
 
     mp_hands = mp.solutions.hands
     mp_draw = mp.solutions.drawing_utils
@@ -552,16 +597,33 @@ def main() -> None:
                     conf_sum += stable_conf
                     conf_count += 1
                     
-                    # Auto-enhance in Simple Mode (after each word added)
-                    if simple_mode and gemini_enabled and gemini_service.is_available():
-                        # Auto-enhance with small delay to avoid rate limits
-                        if (now - last_enhancement_time) >= 2.0:  # 2 second cooldown
-                            sentence_temp = " ".join(sentence_words)
-                            if len(sentence_words) >= 2:  # Only enhance when 2+ words
-                                result = gemini_service.enhance_sentence(sentence_temp)
-                                if result.success:
-                                    enhanced_sentence = result.enhanced_text
-                                    last_enhancement_time = now
+                    # 🔔 DEBUG: Confirm gesture was added
+                    print(f"[✓ GESTURE ADDED] {stable_lbl} (confidence: {stable_conf:.2f})")
+                    print(f"[SENTENCE] {' '.join(sentence_words)}")
+                    
+                    # Smart auto-enhancement (works in both modes, faster and smarter)
+                    should_enhance = False
+                    if gemini_enabled and gemini_service.is_available():
+                        # Enhance after 2+ words OR immediately for certain key words
+                        if len(sentence_words) >= 2:
+                            should_enhance = (now - last_enhancement_time) >= 1.5  # Faster (1.5s)
+                        # Enhance immediately for question/help words
+                        if stable_lbl.lower() in ['how', 'what', 'where', 'when', 'why', 'help', 'please']:
+                            should_enhance = True
+                    
+                    if should_enhance:
+                        sentence_temp = " ".join(sentence_words)
+                        print(f"[🤖 GEMINI] Enhancing: {sentence_temp}")
+                        try:
+                            result = gemini_service.enhance_sentence(sentence_temp)
+                            if result.success:
+                                enhanced_sentence = result.enhanced_text
+                                last_enhancement_time = now
+                                print(f"[✨ ENHANCED] {enhanced_sentence}")
+                            else:
+                                print(f"[⚠️ GEMINI] Enhancement failed: {result.error_message}")
+                        except Exception as e:
+                            print(f"[❌ ERROR] Gemini crashed: {e}")
 
             # FPS
             now2 = time.time()
@@ -635,16 +697,23 @@ def main() -> None:
                 enhanced_sentence = ""
                 last_added_label = ""
                 last_add_time = time.time()
-                print("[INFO] Sentence cleared.")
+                print("[✓ CLEARED] Sentence reset. Ready for new gestures.")
 
             if key == ord("s"):
                 if tts is None:
                     print("[WARN] TTS not available.")
+                elif not sentence.strip():
+                    print("[WARN] No sentence to speak. Add gestures first.")
                 else:
                     # Speak enhanced sentence if available, otherwise raw sentence
                     text_to_speak = enhanced_sentence if (gemini_enabled and enhanced_sentence) else sentence
-                    print(f"[TTS] Speaking: {text_to_speak}")
-                    speak_text(tts, text_to_speak)
+                    print(f"[🔊 SPEAKING] {text_to_speak}")
+                    try:
+                        speak_text(tts, text_to_speak)
+                        print("[✓ SPEECH COMPLETE]")
+                    except Exception as e:
+                        print(f"[ERROR] Speech failed: {e}")
+                        print("[FALLBACK] Displaying text only")
             
             if key == ord("g"):
                 # Toggle Gemini

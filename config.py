@@ -77,8 +77,8 @@ class CameraConfig:
 @dataclass
 class MediaPipeConfig:
     max_num_hands: int = 1
-    min_detection_confidence: float = 0.7
-    min_tracking_confidence: float = 0.7
+    min_detection_confidence: float = 0.5  # Lower for easier hand detection
+    min_tracking_confidence: float = 0.5   # Lower for smoother tracking
 
 
 @dataclass
@@ -105,10 +105,10 @@ class ModelConfig:
 
 @dataclass
 class RuntimeConfig:
-    confidence_threshold: float = 0.70
-    smoothing_window: int = 10
-    smoothing_accept_ratio: float = 0.80
-    stable_cooldown_sec: float = 0.70  # prevents rapid duplicate additions
+    confidence_threshold: float = 0.40  # Save gesture at 40% confidence
+    smoothing_window: int = 7          # Faster response (7 frames)
+    smoothing_accept_ratio: float = 0.65  # More forgiving (65% agreement)
+    stable_cooldown_sec: float = 0.80  # Slightly longer to avoid duplicates
 
 
 @dataclass
@@ -134,12 +134,12 @@ class UIConfig:
 
 @dataclass
 class GeminiConfig:
-    api_key: str = "AIzaSyAjqCO0x7dLFjrZtLc6rLvgFwkKj2SdpWA"
-    model_name: str = "gemini-2.5-flash"  # Latest fast model, free tier
-    enabled_by_default: bool = False  # Optional feature, toggle with 'g' key
+    api_key: str = "AIzaSyD3FM1ftJwHqQa-DivRbt-51FJMAlWEXwU"
+    model_name: str = "models/gemini-2.5-flash"  # Full model path for new API
+    enabled_by_default: bool = True  # Enable by default for better UX
     auto_enhance_in_simple_mode: bool = True  # Auto-enhance in Simple Mode
     timeout_seconds: int = 5
-    max_retries: int = 2
+    max_retries: int = 1  # Reduced to avoid hitting quota quickly
     
     # Tone options: "natural", "polite", "formal", "casual"
     default_tone: str = "polite"
@@ -149,33 +149,24 @@ class GeminiConfig:
     temperature: float = 0.3
     
     # System prompt for Gemini
-    system_prompt: str = """You are a language assistant for an Indian Sign Language (ISL) gesture recognition system.
-Your task is to convert sequences of recognized gesture words into natural, grammatically correct English sentences.
+    system_prompt: str = """You are an AI assistant for Indian Sign Language translation. Convert gesture sequences into natural English.
 
-Rules:
-1. Expand short gesture sequences into complete, fluent sentences
-2. Add appropriate articles (a, an, the), pronouns, and connecting words
-3. Maintain the original intent and meaning
-4. Use proper grammar, punctuation, and capitalization
-5. Keep responses concise but natural
-6. If the input is already a complete sentence, lightly polish it
-7. DO NOT add information that wasn't implied by the gestures
-8. DO NOT explain what you're doing, just return the enhanced sentence
+RULES:
+- Return ONLY one complete sentence
+- Add grammar words (is, are, can, could, may, please, etc.)
+- Keep under 20 words
+- Use polite, conversational tone
+- NO explanations or alternatives
 
 Examples:
-Input: "hello water please"
-Output: "Hello, could I please have some water?"
+"hello water please" → "Hello, may I please have some water?"
+"thanks help" → "Thank you for helping me."
+"i love food" → "I love food."
+"stop no bad" → "No, please stop that."
+"hello how you" → "Hello, how are you?"
+"i need help please" → "I need help, please."
 
-Input: "thanks help"
-Output: "Thank you for your help."
-
-Input: "I love food"
-Output: "I love food."
-
-Input: "stop no bad"
-Output: "Stop, that's not good."
-
-Now enhance the following gesture sequence:"""
+Convert to natural English:"""
 
 
 CAMERA = CameraConfig()

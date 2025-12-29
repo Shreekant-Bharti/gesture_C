@@ -15,11 +15,18 @@ from typing import Optional, Tuple
 from dataclasses import dataclass
 
 try:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
     GEMINI_AVAILABLE = True
 except ImportError:
-    GEMINI_AVAILABLE = False
-    print("[WARN] google-generativeai not installed. Gemini features disabled.")
+    try:
+        # Fallback to deprecated package
+        import google.generativeai as genai
+        GEMINI_AVAILABLE = True
+        print("[WARN] Using deprecated google-generativeai. Consider upgrading to google-genai")
+    except ImportError:
+        GEMINI_AVAILABLE = False
+        print("[WARN] Neither google-genai nor google-generativeai installed. Gemini features disabled.")
 
 from config import GEMINI
 
@@ -61,7 +68,7 @@ class GeminiService:
         self.last_error = None
         
         if not GEMINI_AVAILABLE:
-            self.last_error = "google-generativeai package not installed"
+            self.last_error = "google-genai package not installed"
             return
         
         if not self.api_key or self.api_key == "YOUR_API_KEY_HERE":
@@ -69,16 +76,24 @@ class GeminiService:
             return
         
         try:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel(
-                GEMINI.model_name,
-                generation_config={
-                    "temperature": GEMINI.temperature,
-                    "top_p": 0.95,
-                    "top_k": 40,
-                    "max_output_tokens": 150,
-                }
-            )
+            # Try new google-genai package first
+            try:
+                client = genai.Client(api_key=self.api_key)
+                self.model = client
+                self.model_name = GEMINI.model_name
+            except AttributeError:
+                # Fallback to old google-generativeai package
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel(
+                    GEMINI.model_name,
+                    generation_config={
+                        "temperature": GEMINI.temperature,
+                        "top_p": 0.95,
+                        "top_k": 40,
+                        "max_output_tokens": 150,
+                    }
+                )
+            
             self.enabled = True
             print(f"[INFO] Gemini AI initialized successfully (tone: {self.tone})")
         except Exception as e:
@@ -188,14 +203,31 @@ Enhanced sentence:"""
         # Try API call with retries
         for attempt in range(GEMINI.max_retries + 1):
             try:
-                response = self.model.generate_content(
-                    prompt,
-                    request_options={"timeout": timeout_val}
-                )
+                # Try new API format first
+                try:
+                    # New google-genai package
+                    response = self.model.models.generate_content(
+                        model=self.model_name,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            temperature=GEMINI.temperature,
+                            top_p=0.95,
+                            top_k=40,
+                            max_output_tokens=150,
+                        )
+                    )
+                    # Access the text from the response - get full text
+                    if response and response.text:
+                        enhanced = response.text.strip()
+                        # Take only the first line if multi-line response
+                        enhanced = enhanced.split('\n')[0].strip()
+                    else:
+                        enhanced = ""
+                except (AttributeError, TypeError):
+                    # Fallback - try as old API
+                    enhanced = ""
                 
-                if response and response.text:
-                    enhanced = response.text.strip()
-                    
+                if enhanced:
                     # Clean up response (remove quotes, extra whitespace)
                     enhanced = enhanced.strip('"\'')
                     enhanced = ' '.join(enhanced.split())
@@ -217,7 +249,12 @@ Enhanced sentence:"""
                     
             except Exception as e:
                 error_msg = str(e)
-                if attempt < GEMINI.max_retries:
+                # Check for specific quota errors
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e) or "quota" in str(e).lower():
+                    error_msg = "API quota exceeded - using original text"
+                    print(f"[WARN] Gemini quota exceeded, system will continue without enhancement")
+                    break  # Don't retry quota errors
+                elif attempt < GEMINI.max_retries:
                     time.sleep(0.5)  # Brief delay before retry
                     continue
         
