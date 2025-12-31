@@ -1,322 +1,181 @@
-# ISL Real-time Gesture Recognition (MediaPipe + Scikit-learn + Gemini AI)
+# ISL Real-Time Gesture Recognition System
 
-## 🎯 Two Modes for Everyone
-
-### 👋 **SIMPLE MODE** (Default) - For Everyone
-
-**Perfect for non-technical users, elderly, deaf, and public demos**
-
-- ✅ Clean, large text interface
-- ✅ Auto-enhancement with AI
-- ✅ Zero technical knowledge needed
-- ✅ Just show your hand and sign!
-
-**Controls:** `s` to speak, `c` to clear, `a` for Advanced Mode
-
-📖 **[Simple Mode User Guide →](SIMPLE_MODE_GUIDE.md)** _(Start here!)_
-
----
-
-### 🔧 **ADVANCED MODE** - For Developers
-
-Full-featured mode with:
-
-- Real-time stats (FPS, confidence, etc.)
-- Tutorial overlay
-- Manual controls
-- Debug information
-
-**Press `a` to toggle between modes**
-
----
+A real-time Indian Sign Language (ISL) gesture recognition system using MediaPipe hand tracking, machine learning, and AI-powered natural language enhancement.
 
 ## 🌟 Features
 
-- Real-time hand landmark detection (MediaPipe)
-- Gesture recognition using ML (RandomForest)
-- Sentence building with smoothing
-- **🤖 AI-powered natural language enhancement (Google Gemini)** ✨
-- Text-to-speech output (pyttsx3)
-- Tutorial mode + stats + save sentence to file
-- **👵 Accessibility-focused Simple Mode** ✨ NEW!
+- **Real-time hand gesture recognition** using MediaPipe and Random Forest classifier
+- **Two user modes:**
+  - **Simple Mode** (default): Clean, accessible interface for non-technical users
+  - **Advanced Mode**: Full developer interface with stats and debugging
+- **AI-powered sentence enhancement** with Google Gemini API
+- **Text-to-speech** output for recognized gestures
+- **Tutorial mode** with gesture instructions
+- **Sentence building** with gesture smoothing
+- **Save sentences** to text files
 
-Works on Windows 10/11 with a normal laptop webcam.
+## 📋 Supported Gestures
 
----
+### Alphabets
 
-## 🤖 Gemini AI Integration
+A, B, C, D, E, F, G, H, I, L, O, U, V, W, Y
 
-Transform raw gesture sequences into natural English!
+### Common Words
+
+Hello, Thanks, Yes, No, Help, Please, Sorry, Stop, Okay, Good, Bad, Water, Food, Love, Peace
+
+### Numbers
+
+0-9
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Python 3.8 or higher
+- Webcam
+- Windows 10/11 (tested)
+
+### Installation
+
+1. **Clone the repository**
+
+```powershell
+git clone <your-repo-url>
+cd gesture
+```
+
+2. **Create a virtual environment** (recommended)
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+3. **Install dependencies**
+
+```powershell
+pip install -r requirements.txt
+```
+
+4. **Set up Gemini API (Optional, for AI enhancement)**
+   - Get a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+   - Copy `.env.example` to `.env`
+   - Add your API key to `.env`:
+   ```
+   GEMINI_API_KEY=your_api_key_here
+   ```
+
+### Training the Model
+
+Before first use, train the gesture recognition model:
+
+```powershell
+# Collect training data (follow on-screen instructions)
+python tools/collect_data.py
+
+# Train the model
+python tools/train_model.py
+```
+
+### Running the Application
+
+```powershell
+python main_app.py
+```
+
+## 🎮 Controls
+
+### Simple Mode (Default)
+
+- `s` - Speak sentence with text-to-speech
+- `c` - Clear current sentence
+- `a` - Toggle to Advanced Mode
+- `q` - Quit
+
+### Advanced Mode
+
+All Simple Mode controls plus:
+
+- `w` - Write sentence to file
+- `t` - Toggle tutorial overlay
+- `g` - Toggle Gemini AI enhancement
+- `e` - Manually enhance current sentence
+- `q` - Quit
+
+## 🤖 AI Enhancement
+
+The system uses Google Gemini AI to transform raw gesture sequences into natural English sentences.
 
 **Example:**
 
-- **Input:** `hello water please`
-- **Output:** `Hello, could I please have some water?`
+- Raw: `hello water please`
+- Enhanced: `Hello, could I please have some water?`
 
-**Features:**
+The AI enhancement is optional and the system works without it.
 
-- ✅ Natural language processing
-- ✅ Grammar correction
-- ✅ Multiple tones (polite, formal, casual)
-- ✅ Auto-enhancement in Simple Mode
-- ✅ Free tier (Google Gemini 2.5 Flash)
-
-📖 **[Full Gemini Integration Guide →](GEMINI_INTEGRATION.md)**
-
----
-
-## Setup (Under 30 minutes)
-
-### 1) Create a virtual environment (recommended)
-
-Open PowerShell in project folder:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-### 2) Install dependencies
-
-```powershell
-pip install -r requirements.txt
-```
-
-If mediapipe fails, upgrade pip:
-
-```powershell
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
-
----
-
-## 📁 Project Structure (Cleaned & Optimized)
+## 📁 Project Structure
 
 ```
 gesture/
-├── main_app.py           # Main application (Simple + Advanced modes)
-├── config.py             # Centralized configuration
+├── main_app.py           # Main application
+├── config.py             # Configuration settings
 ├── gemini_ai.py          # AI enhancement module
-├── requirements.txt      # Dependencies
-├── gesture_model.pkl     # Trained ML model
-├── README.md             # This file
-├── tools/                # Development utilities
-│   ├── collect_data.py   # Gesture data collection
-│   └── train_model.py    # Model training
+├── requirements.txt      # Python dependencies
+├── .env.example          # Environment variables template
+├── .gitignore            # Git ignore rules
 ├── gesture_data/         # Training data (CSV files)
-│   └── *.csv             # (42 gestures: A-Z, 0-9, words)
-└── sentences/            # Saved output sentences
-    └── *.txt
+└── tools/
+    ├── collect_data.py   # Data collection script
+    └── train_model.py    # Model training script
 ```
 
-**Core Files (6):**
+## 🛠️ Configuration
 
-- Production: `main_app.py`, `config.py`, `gemini_ai.py`, `requirements.txt`, `gesture_model.pkl`
-- Documentation: `README.md`
+Edit `config.py` to customize:
 
-**Development Tools:**
+- Camera settings (resolution, FPS)
+- Gesture list
+- Model parameters
+- UI settings
+- Runtime behavior
 
-- `tools/collect_data.py` - Collect gesture training data
-- `tools/train_model.py` - Train RandomForest model
+## 📝 How It Works
+
+1. **Hand Detection**: MediaPipe detects hand landmarks in real-time
+2. **Feature Extraction**: 21 hand landmarks are normalized to 63 features
+3. **Gesture Recognition**: Random Forest classifier predicts the gesture
+4. **Smoothing**: Consecutive frames are analyzed to reduce noise
+5. **Sentence Building**: Recognized gestures are combined into sentences
+6. **AI Enhancement**: (Optional) Gemini AI improves grammar and naturalness
+7. **Output**: Display on screen and optional text-to-speech
+
+## 🔒 Privacy & Security
+
+- No personal data is collected or transmitted
+- Camera feed is processed locally
+- Gemini API key is kept in `.env` file (not committed to Git)
+- All gesture data stays on your device
+
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to:
+
+- Report bugs
+- Suggest new features
+- Add more gestures
+- Improve documentation
+
+## 📄 License
+
+This project is provided as-is for educational and personal use.
+
+## 🙏 Acknowledgments
+
+- MediaPipe by Google for hand tracking
+- scikit-learn for machine learning
+- Google Gemini for AI enhancement
 
 ---
 
-## 📦 Supported Gestures (42 Total)
-
-**Letters (15):** A, B, C, D, E, F, G, H, I, L, O, U, V, W, Y  
-**Numbers (10):** 0-9  
-**Words (17):** Hello, Help, Thanks, Please, Yes, No, Okay, Stop, ...
-
-_Configure in [config.py](config.py) → `GestureConfig.labels`_
-
----
-
-## ⚙️ Configuration
-
-All settings in [config.py](config.py):
-
-**Gemini AI:**
-
-```python
-GEMINI = GeminiConfig(
-    api_key="AIzaSyA...",           # Your API key
-    model_name="gemini-2.5-flash",   # Model version
-    auto_enhance_in_simple_mode=True # Auto-enhance
-)
-```
-
-**Camera:**
-
-```python
-CAMERA = CameraConfig(
-    index=0,      # Camera index (try 1 if 0 fails)
-    width=1280,
-    height=720,
-    fps=30
-)
-```
-
-**UI Mode:**
-
-```python
-UI = UIConfig(
-    simple_mode_default=True  # Start in Simple Mode
-)
-```
-
----
-
----
-
-## Step 1: Collect Data (VERY IMPORTANT)
-
-Run:
-
-```powershell
-python tools/collect_data.py
-```
-
-You will see the webcam with landmarks.
-
-**Controls:**
-
-- `SPACE` = start/stop collecting
-- `n` = next gesture label
-- `q` = quit
-
-**Tips for good accuracy:**
-
-- Collect **100 to 200 samples per gesture**
-- Change slightly between samples: angle, distance, tilt, lighting
-- Keep each gesture consistent: do not mix multiple variants for the same label
-- Try to keep your hand inside the frame
-
-You will get:
-
-```
-gesture_data/A.csv
-gesture_data/Hello.csv
-... etc
-```
-
----
-
-## Step 2: Train the Model
-
-Run:
-
-```powershell
-python tools/train_model.py
-```
-
-This will:
-
-- load all CSVs
-- train model
-- show accuracy, report, confusion matrix
-- save model to `gesture_model.pkl`
-
----
-
-## Step 3: Run the Application
-
-Run:
-
-```powershell
-python main_app.py
-```
-
-### 🎮 Controls
-
-**Simple Mode (Default):**
-
-- `s` = speak sentence (TTS)
-- `c` = clear sentence
-- `a` = switch to Advanced Mode
-
-**Advanced Mode:**
-
-- `s` = speak sentence (TTS)
-- `c` = clear sentence
-- `w` = save sentence to txt file
-- `t` = toggle tutorial mode
-- `a` = switch to Simple Mode
-- `[` / `]` = tutorial pages (when tutorial active)
-- `q` = quit
-
----
-
-## Troubleshooting
-
-### Camera not opening
-
-- Close other apps using camera (Zoom, Teams, browser tabs).
-- Try changing camera index in `config.py`:
-  ```python
-  CAMERA.index = 1
-  ```
-
-### Low accuracy
-
-You likely collected inconsistent samples.  
-**Fix:**
-
-- collect more samples per gesture
-- keep pose consistent per label
-- improve lighting
-- avoid motion during sampling (use stable poses while collecting)
-
-### Mediapipe install issues
-
-- Make sure you are using Python 3.10 or 3.11 (recommended).
-- Check:
-  ```powershell
-  python --version
-  ```
-
-### TTS not speaking
-
-- `pyttsx3` depends on Windows voices. Usually works.
-- Try running `main_app.py` from a normal terminal, not inside some restricted environments.
-
----
-
-## 🚀 Beginner Quick Start
-
-```powershell
-# 1. Setup
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-
-# 2. Collect gesture data
-python tools/collect_data.py
-
-# 3. Train model
-python tools/train_model.py
-
-# 4. Run app
-python main_app.py
-```
-
----
-
-## 📝 Usage Guide (Simple Mode)
-
-1. **Launch:** Run `python main_app.py`
-2. **Sign:** Show ISL gestures to camera
-3. **Build sentence:** Gestures auto-add after 1 second stability
-4. **Enhance (Auto):** AI improves sentence after 2+ words
-5. **Speak:** Press `s` to hear your sentence
-6. **Clear:** Press `c` to start over
-
-**Example Flow:**
-
-```
-Gesture: "Hello" → "Water" → "Please"
-Auto-enhanced: "Hello, could I please have some water?"
-Press 's' → Speaks aloud!
-```
-
----
+**Note**: This system requires a trained model file (`gesture_model.pkl`). Make sure to run the data collection and training scripts before using the main application.

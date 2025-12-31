@@ -41,3 +41,8 @@ Thumbs.db
 # Project specific
 sentences/
 *.pkl.bak
+# Environment Variables (IMPORTANT: keeps API keys safe)
+.env
+
+# Model files
+*.pkl

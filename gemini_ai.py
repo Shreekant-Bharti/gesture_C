@@ -10,9 +10,17 @@ Features:
 - Modular and optional integration
 """
 
+import os
 import time
 from typing import Optional, Tuple
 from dataclasses import dataclass
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not installed, will use system environment variables
 
 try:
     from google import genai
@@ -58,10 +66,11 @@ class GeminiService:
         Initialize Gemini service.
         
         Args:
-            api_key: Gemini API key (defaults to config value)
+            api_key: Gemini API key (defaults to environment variable GEMINI_API_KEY)
             tone: Response tone - "natural", "polite", "formal", or "casual"
         """
-        self.api_key = api_key or GEMINI.api_key
+        # Try to get API key from: parameter > environment variable > config
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY") or GEMINI.api_key
         self.tone = tone
         self.model = None
         self.enabled = False
@@ -71,8 +80,8 @@ class GeminiService:
             self.last_error = "google-genai package not installed"
             return
         
-        if not self.api_key or self.api_key == "YOUR_API_KEY_HERE":
-            self.last_error = "Invalid API key"
+        if not self.api_key or self.api_key == "YOUR_API_KEY_HERE" or self.api_key == "":
+            self.last_error = "Invalid API key. Set GEMINI_API_KEY environment variable."
             return
         
         try:
@@ -184,19 +193,7 @@ Enhanced sentence:"""
                 processing_time=time.time() - start_time
             )
         
-        # If already looks like a complete sentence, maybe skip enhancement
-        # (optional - can be disabled)
-        words = gesture_sequence.strip().split()
-        if len(words) == 1:
-            # Single word - capitalize and return
-            return GeminiResponse(
-                success=True,
-                enhanced_text=gesture_sequence.strip().capitalize() + ".",
-                original_text=gesture_sequence,
-                processing_time=time.time() - start_time
-            )
-        
-        # Build prompt
+        # Build prompt and enhance ALL inputs (including single words)
         prompt = self._build_prompt(gesture_sequence)
         timeout_val = timeout or GEMINI.timeout_seconds
         

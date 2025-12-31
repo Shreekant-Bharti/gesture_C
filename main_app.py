@@ -604,11 +604,11 @@ def main() -> None:
                     # Smart auto-enhancement (works in both modes, faster and smarter)
                     should_enhance = False
                     if gemini_enabled and gemini_service.is_available():
-                        # Enhance after 2+ words OR immediately for certain key words
-                        if len(sentence_words) >= 2:
-                            should_enhance = (now - last_enhancement_time) >= 1.5  # Faster (1.5s)
+                        # Enhance after ANY new word is added (wait 0.5s to allow quick multi-gesture sequences)
+                        if len(sentence_words) >= 1:
+                            should_enhance = (now - last_enhancement_time) >= 0.5  # Quick enhancement
                         # Enhance immediately for question/help words
-                        if stable_lbl.lower() in ['how', 'what', 'where', 'when', 'why', 'help', 'please']:
+                        if stable_lbl.lower() in ['how', 'what', 'where', 'when', 'why', 'help', 'please', 'water', 'food', 'thanks', 'sorry']:
                             should_enhance = True
                     
                     if should_enhance:

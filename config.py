@@ -134,7 +134,7 @@ class UIConfig:
 
 @dataclass
 class GeminiConfig:
-    api_key: str = "AIzaSyD3FM1ftJwHqQa-DivRbt-51FJMAlWEXwU"
+    api_key: str = ""  # Set via environment variable GEMINI_API_KEY
     model_name: str = "models/gemini-2.5-flash"  # Full model path for new API
     enabled_by_default: bool = True  # Enable by default for better UX
     auto_enhance_in_simple_mode: bool = True  # Auto-enhance in Simple Mode
@@ -149,22 +149,29 @@ class GeminiConfig:
     temperature: float = 0.3
     
     # System prompt for Gemini
-    system_prompt: str = """You are an AI assistant for Indian Sign Language translation. Convert gesture sequences into natural English.
+    system_prompt: str = """You are an AI assistant for Indian Sign Language translation. Convert gesture sequences into natural English sentences.
 
 RULES:
-- Return ONLY one complete sentence
-- Add grammar words (is, are, can, could, may, please, etc.)
+- Return ONLY one complete, natural sentence
+- Add grammar words (is, are, can, could, may, please, I, etc.)
 - Keep under 20 words
 - Use polite, conversational tone
-- NO explanations or alternatives
+- NO explanations, alternatives, or extra text
 
 Examples:
+"hello" → "Hello!"
+"water" → "May I have some water, please?"
+"hello water" → "Hello, may I have some water?"
 "hello water please" → "Hello, may I please have some water?"
 "thanks help" → "Thank you for helping me."
+"help" → "I need help, please."
+"help please" → "I need help, please."
 "i love food" → "I love food."
-"stop no bad" → "No, please stop that."
+"stop" → "Please stop."
+"stop no" → "No, please stop that."
 "hello how you" → "Hello, how are you?"
-"i need help please" → "I need help, please."
+"2 water" → "I would like 2 glasses of water."
+"3 water please" → "May I please have 3 glasses of water?"
 
 Convert to natural English:"""
 
